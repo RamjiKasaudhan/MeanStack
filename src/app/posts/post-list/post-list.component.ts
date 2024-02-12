@@ -4,6 +4,7 @@ import { Subscription } from 'rxjs';
 import { Post } from '../post.model';
 import { PostsService } from '../posts.service';
 import { MatPaginator, PageEvent } from '@angular/material/paginator';
+import { AuthService } from 'src/app/auth/auth.service';
 
 @Component({
   selector: 'app-post-list',
@@ -20,8 +21,10 @@ export class PostListComponent implements OnInit, OnDestroy {
   postPerPage = 2;
   currentPage = 1;
   pageSizeOptions = [1, 2, 5, 10];
+  userIsAuthencated=false;
+  private authListenerSubs!:Subscription;
 
-  constructor(private postsService: PostsService) {}
+  constructor(private postsService: PostsService, private authService:AuthService) { }
 
   ngOnInit() {
     this.isLoading = true;
@@ -33,21 +36,25 @@ export class PostListComponent implements OnInit, OnDestroy {
         this.totalPosts = postData.postCount;
         this.posts = postData.posts;
       });
+    this.userIsAuthencated=this.authService.getIsAuth();
+    this.authListenerSubs = this.authService.getAuthStatusListener().subscribe(isAuthencated=>{
+        this.userIsAuthencated=isAuthencated;
+    });  
   }
 
   onDelete(postId: string) {
     this.isLoading = true;
     this.postsService.deletePost(postId).subscribe(() => {
-        if(this.currentPage>1 && this.posts.length==1){
-            this.currentPage--;
-            this.paginator.pageIndex = this.currentPage-1;
-            this.paginator._changePageSize(this.paginator.pageSize);
-        }else{
-            this.postsService.getPosts(this.postPerPage, this.currentPage);
-        }
+      if (this.currentPage > 1 && this.posts.length == 1) {
+        this.currentPage--;
+        this.paginator.pageIndex = this.currentPage - 1;
+        this.paginator._changePageSize(this.paginator.pageSize);
+      } else {
+        this.postsService.getPosts(this.postPerPage, this.currentPage);
+      }
     });
     this.isLoading = true;
-    
+
   }
 
   onChangedPage(pageEvent: PageEvent) {
@@ -60,5 +67,6 @@ export class PostListComponent implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     this.postsSub.unsubscribe();
+    this.authListenerSubs.unsubscribe();
   }
 }
